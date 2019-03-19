@@ -1,6 +1,6 @@
 package software.kloud.silver.client;
 
-import com.google.gson.Gson;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import software.kloud.sc.SilverCommunication;
 import software.kloud.sc.StatusResponseDTO;
 import software.kloud.sc.TransferDTO;
@@ -10,7 +10,7 @@ import java.util.Optional;
 import java.util.zip.CRC32;
 
 public class CommunicationClient {
-    private static final Gson gson = new Gson();
+    private static final ObjectMapper objMapper = new ObjectMapper();
     // TODO do not init here
     private final HttpTransfer transfer;
 
@@ -23,8 +23,7 @@ public class CommunicationClient {
 
         try {
             var json = transfer.get(key, type.getCanonicalName());
-            System.out.println(json);
-            entity = gson.fromJson(json, type);
+            entity = objMapper.readValue(json, type);
         } catch (IOException e) {
             throw new IOException("Failed to get from silver", e);
         }
@@ -34,18 +33,18 @@ public class CommunicationClient {
 
     public <T extends SilverCommunication> StatusResponseDTO save(T obj) throws IOException {
         var clazz = obj.getClass();
-        var payload = gson.toJson(obj);
+        var payload = objMapper.writeValueAsString(obj);
 
         var crc32Gen = new CRC32();
         crc32Gen.update(payload.getBytes());
         var checksum = crc32Gen.getValue();
 
         var transferDTO = new TransferDTO(payload, checksum, clazz);
-        var jsonPayload = gson.toJson(transferDTO);
+        var jsonPayload = objMapper.writeValueAsString(transferDTO);
 
         try {
             String json = transfer.post(jsonPayload);
-            return gson.fromJson(json, StatusResponseDTO.class);
+            return objMapper.readValue(json, StatusResponseDTO.class);
         } catch (IOException e) {
             throw new IOException("Failed to post to silver spork", e);
         }
